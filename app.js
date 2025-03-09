@@ -53,28 +53,27 @@ function decodeData(encodedData) {
   return JSON.parse(decodedString);
 }
 
+let keyPressed = {};
+
 window.addEventListener('keydown', (event) => {
   if (event.key === '/') {
     dataBox.style.display = dataBox.style.display === 'none' ? 'block' : 'none';
     return;
   }
+  keyPressed[event.key] = true;
+});
 
+window.addEventListener('keyup', (event) => {
+  delete keyPressed[event.key];
+});
+
+function moveCube() {
   let { x, y } = cubePosition;
 
-  switch (event.key) {
-    case 'ArrowUp':
-      y -= 1;
-      break;
-    case 'ArrowDown':
-      y += 1;
-      break;
-    case 'ArrowLeft':
-      x -= 1;
-      break;
-    case 'ArrowRight':
-      x += 1;
-      break;
-  }
+  if (keyPressed['ArrowUp']) y -= 1;
+  if (keyPressed['ArrowDown']) y += 1;
+  if (keyPressed['ArrowLeft']) x -= 1;
+  if (keyPressed['ArrowRight']) x += 1;
 
   cubePosition.x = Math.max(0, Math.min(x, gameContainer.clientWidth - cube.offsetWidth));
   cubePosition.y = Math.max(0, Math.min(y, gameContainer.clientHeight - cube.offsetHeight));
@@ -84,7 +83,9 @@ window.addEventListener('keydown', (event) => {
   const encodedData = encodeData(cubePosition);
   channel.publish('MOVE', { payload: encodedData });
   logDataToBox('Sent', cubePosition);
-});
+
+  requestAnimationFrame(moveCube);
+}
 
 channel.subscribe('MOVE', (message) => {
   const decodedData = decodeData(message.data.payload);
@@ -118,4 +119,4 @@ function getRandomColor() {
 }
 
 updateCubePosition(cube, cubePosition);
-document.getElementById('scoreboard').textContent = `Your Score: ${score}`;
+moveCube();

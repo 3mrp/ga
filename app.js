@@ -70,10 +70,10 @@ window.addEventListener('keyup', (event) => {
 function moveCube() {
   let { x, y } = cubePosition;
 
-  if (keyPressed['ArrowUp']) y -= 1;
-  if (keyPressed['ArrowDown']) y += 1;
-  if (keyPressed['ArrowLeft']) x -= 1;
-  if (keyPressed['ArrowRight']) x += 1;
+  if (keyPressed['ArrowUp']) y -= 15;
+  if (keyPressed['ArrowDown']) y += 15;
+  if (keyPressed['ArrowLeft']) x -= 15;
+  if (keyPressed['ArrowRight']) x += 15;
 
   cubePosition.x = Math.max(0, Math.min(x, gameContainer.clientWidth - cube.offsetWidth));
   cubePosition.y = Math.max(0, Math.min(y, gameContainer.clientHeight - cube.offsetHeight));

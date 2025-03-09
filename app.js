@@ -6,11 +6,11 @@ const scoreboard = document.getElementById('scoreboard');
 const clientId = `player-${Math.floor(Math.random() * 10000)}`;
 let snake = [{ x: 100, y: 100 }];
 let direction = { x: 1, y: 0 };
-let speed = 2;
+let speed = 6;
 let otherSnakes = {};
-let food = { x: Math.floor(Math.random() * 500), y: Math.floor(Math.random() * 500) };
+let food = { x: Math.floor(Math.random() * 590), y: Math.floor(Math.random() * 590) };
 let score = 0;
-let lastPosition = { x: 100, y: 100 }; // To track the last sent position
+let lastPosition = { x: 100, y: 100 };
 
 const snakeElements = [];
 const foodElement = document.createElement('div');
@@ -42,15 +42,22 @@ function moveSnake() {
   };
   snake.unshift(newHead);
 
-  if (!(newHead.x === food.x && newHead.y === food.y)) {
-    snake.pop();
-  } else {
+  // Check for food collision
+  if (
+    newHead.x < food.x + 10 &&
+    newHead.x + 10 > food.x &&
+    newHead.y < food.y + 10 &&
+    newHead.y + 10 > food.y
+  ) {
     score += 10;
-    food = { x: Math.floor(Math.random() * 500), y: Math.floor(Math.random() * 500) };
+    food = { x: Math.floor(Math.random() * (gameContainer.clientWidth - 10)), y: Math.floor(Math.random() * (gameContainer.clientHeight - 10)) };
     updateFoodPosition();
     channel.publish('FOOD', food);
+  } else {
+    snake.pop();
   }
 
+  // Update snake segments in the DOM
   while (snake.length > snakeElements.length) {
     createSnakeSegment();
   }
@@ -59,13 +66,15 @@ function moveSnake() {
     snakeElements[i].style.top = `${segment.y}px`;
   });
 
+  // Detect collision
   if (snakeCollision(newHead)) {
     resetSnake();
   }
 
+  // Publish movement only if position changed
   if (newHead.x !== lastPosition.x || newHead.y !== lastPosition.y) {
     channel.publish('MOVE', { id: clientId, snake, score });
-    lastPosition = { x: newHead.x, y: newHead.y }; // Update the last sent position
+    lastPosition = { x: newHead.x, y: newHead.y };
   }
 }
 
@@ -86,7 +95,7 @@ function resetSnake() {
 }
 
 function updateOtherSnakes(message) {
-  const { id, snake: otherSnake, score: otherScore } = message.data;
+  const { id, snake: otherSnake } = message.data;
   if (!otherSnakes[id]) {
     otherSnakes[id] = otherSnake.map(() => createSnakeSegment());
   }
@@ -122,6 +131,6 @@ window.addEventListener('keydown', (event) => {
 setInterval(() => {
   moveSnake();
   updateScoreboard();
-}, 100);
+}, 50);
 
 updateFoodPosition();

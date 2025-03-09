@@ -1,5 +1,5 @@
 const ably = new Ably.Realtime('Aj5RCA.lkSclA:JY7AdllhPQkqoWqgyuxqUA3KeUBA_4ZkQhC8jJnuPYY');
-const channel = ably.channels.get('maze-game');
+const channel = ably.channels.get('movement-game');
 const gameContainer = document.getElementById('game-container');
 
 const clientId = `player-${Math.floor(Math.random() * 10000)}`;
@@ -30,7 +30,6 @@ gameContainer.appendChild(dataBox);
 
 let score = 0;
 let otherPlayers = {};
-let maze = [];
 let cubePosition = { x: 0, y: 0, id: clientId };
 
 function updateCubePosition(cubeElement, position) {
@@ -54,37 +53,6 @@ function decodeData(encodedData) {
   return JSON.parse(decodedString);
 }
 
-function generateMaze() {
-  maze = [...Array(15)].map(() =>
-    [...Array(15)].map(() => (Math.random() > 0.7 ? 1 : 0))
-  );
-  renderMaze();
-}
-
-function renderMaze() {
-  document.querySelectorAll('.wall').forEach(w => w.remove());
-  maze.forEach((row, rowIndex) => {
-    row.forEach((cell, cellIndex) => {
-      if (cell === 1) {
-        const wall = document.createElement('div');
-        wall.className = 'wall';
-        wall.style.width = '30px';
-        wall.style.height = '30px';
-        wall.style.backgroundColor = 'black';
-        wall.style.position = 'absolute';
-        wall.style.transform = `translate(${cellIndex * 30}px, ${rowIndex * 30}px)`;
-        gameContainer.appendChild(wall);
-      }
-    });
-  });
-}
-
-function checkCollision(x, y) {
-  const cellX = Math.floor(x / 30);
-  const cellY = Math.floor(y / 30);
-  return maze[cellY]?.[cellX] === 1;
-}
-
 window.addEventListener('keydown', (event) => {
   if (event.key === '/') {
     dataBox.style.display = dataBox.style.display === 'none' ? 'block' : 'none';
@@ -96,37 +64,26 @@ window.addEventListener('keydown', (event) => {
   switch (event.key) {
     case 'ArrowUp':
       y -= 30;
-      if (!checkCollision(x, y)) cubePosition.y = y;
       break;
     case 'ArrowDown':
       y += 30;
-      if (!checkCollision(x, y)) cubePosition.y = y;
       break;
     case 'ArrowLeft':
       x -= 30;
-      if (!checkCollision(x, y)) cubePosition.x = x;
       break;
     case 'ArrowRight':
       x += 30;
-      if (!checkCollision(x, y)) cubePosition.x = x;
       break;
   }
+
+  cubePosition.x = Math.max(0, Math.min(x, gameContainer.clientWidth - cube.offsetWidth));
+  cubePosition.y = Math.max(0, Math.min(y, gameContainer.clientHeight - cube.offsetHeight));
 
   updateCubePosition(cube, cubePosition);
 
   const encodedData = encodeData(cubePosition);
   channel.publish('MOVE', { payload: encodedData });
   logDataToBox('Sent', cubePosition);
-
-  if (x >= 420 && y >= 420) {
-    score++;
-    const encodedScore = encodeData({ id: clientId, score });
-    channel.publish('SCORE', { payload: encodedScore });
-    logDataToBox('Sent', { id: clientId, score });
-    generateMaze();
-    cubePosition = { x: 0, y: 0, id: clientId };
-    updateCubePosition(cube, cubePosition);
-  }
 });
 
 channel.subscribe('MOVE', (message) => {
@@ -151,17 +108,6 @@ channel.subscribe('MOVE', (message) => {
   logDataToBox('Received', decodedData);
 });
 
-channel.subscribe('SCORE', (message) => {
-  const decodedData = decodeData(message.data.payload);
-  const { id, score } = decodedData;
-
-  if (id === clientId) {
-    document.getElementById('scoreboard').textContent = `your score: ${score}`;
-  }
-
-  logDataToBox('Received', decodedData);
-});
-
 function getRandomColor() {
   const letters = '0123456789ABCDEF';
   let color = '#';
@@ -171,6 +117,5 @@ function getRandomColor() {
   return color;
 }
 
-generateMaze();
 updateCubePosition(cube, cubePosition);
-document.getElementById('scoreboard').textContent = `your score: ${score}`;
+document.getElementById('scoreboard').textContent = `Your Score: ${score}`;

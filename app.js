@@ -7,7 +7,7 @@ const clientId = `player-${Math.floor(Math.random() * 10000)}`;
 let snake = [{ x: 100, y: 100 }];
 let direction = { x: 1, y: 0 };
 let speed = 6;
-let otherSnakes = {}; // Store other players' snakes
+let otherSnakes = {};
 let food = { x: Math.floor(Math.random() * 590), y: Math.floor(Math.random() * 590) };
 let score = 0;
 let lastPosition = { x: 100, y: 100 };
@@ -42,7 +42,6 @@ function moveSnake() {
   };
   snake.unshift(newHead);
 
-  // Check for food collision
   if (
     newHead.x < food.x + 10 &&
     newHead.x + 10 > food.x &&
@@ -57,21 +56,22 @@ function moveSnake() {
     snake.pop();
   }
 
-  // Update snake segments in the DOM
   while (snake.length > snakeElements.length) {
     createSnakeSegment();
+  }
+  while (snake.length < snakeElements.length) {
+    const segmentToRemove = snakeElements.pop();
+    gameContainer.removeChild(segmentToRemove);
   }
   snake.forEach((segment, i) => {
     snakeElements[i].style.left = `${segment.x}px`;
     snakeElements[i].style.top = `${segment.y}px`;
   });
 
-  // Detect collision
   if (snakeCollision(newHead)) {
     resetSnake();
   }
 
-  // Publish movement only if position changed
   if (newHead.x !== lastPosition.x || newHead.y !== lastPosition.y) {
     channel.publish('MOVE', { id: clientId, snake, score });
     lastPosition = { x: newHead.x, y: newHead.y };
@@ -97,20 +97,32 @@ function resetSnake() {
 function updateOtherSnakes(message) {
   const { id, snake: otherSnake } = message.data;
 
-  // Check if this is a new snake
   if (!otherSnakes[id]) {
     otherSnakes[id] = otherSnake.map(() => {
       const segment = document.createElement('div');
       segment.style.width = '10px';
       segment.style.height = '10px';
-      segment.style.backgroundColor = 'blue'; // Different color for other players
+      segment.style.backgroundColor = 'blue';
       segment.style.position = 'absolute';
       gameContainer.appendChild(segment);
       return segment;
     });
   }
 
-  // Update the positions of the other player's snake
+  while (otherSnake.length > otherSnakes[id].length) {
+    const segment = document.createElement('div');
+    segment.style.width = '10px';
+    segment.style.height = '10px';
+    segment.style.backgroundColor = 'blue';
+    segment.style.position = 'absolute';
+    gameContainer.appendChild(segment);
+    otherSnakes[id].push(segment);
+  }
+  while (otherSnake.length < otherSnakes[id].length) {
+    const segmentToRemove = otherSnakes[id].pop();
+    gameContainer.removeChild(segmentToRemove);
+  }
+
   otherSnake.forEach((segment, i) => {
     if (otherSnakes[id][i]) {
       otherSnakes[id][i].style.left = `${segment.x}px`;
@@ -123,20 +135,17 @@ function updateScoreboard() {
   scoreboard.textContent = `Your Score: ${score}`;
 }
 
-// Sync food updates across players
 channel.subscribe('FOOD', (message) => {
   food = message.data;
   updateFoodPosition();
 });
 
-// Sync snake movement across players
 channel.subscribe('MOVE', (message) => {
   if (message.data.id !== clientId) {
     updateOtherSnakes(message);
   }
 });
 
-// Share initial state when a new player joins
 channel.subscribe('STATE_REQUEST', (message) => {
   channel.publish('STATE_RESPONSE', {
     id: clientId,
@@ -146,7 +155,6 @@ channel.subscribe('STATE_REQUEST', (message) => {
   });
 });
 
-// Receive initial state from other players
 channel.subscribe('STATE_RESPONSE', (message) => {
   if (message.data.id !== clientId) {
     updateOtherSnakes(message);
@@ -155,7 +163,6 @@ channel.subscribe('STATE_RESPONSE', (message) => {
   }
 });
 
-// Request the current state when joining
 channel.publish('STATE_REQUEST', { id: clientId });
 
 window.addEventListener('keydown', (event) => {

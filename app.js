@@ -63,16 +63,16 @@ window.addEventListener('keydown', (event) => {
 
   switch (event.key) {
     case 'ArrowUp':
-      y -= 30;
+      y -= 1;
       break;
     case 'ArrowDown':
-      y += 30;
+      y += 1;
       break;
     case 'ArrowLeft':
-      x -= 30;
+      x -= 1;
       break;
     case 'ArrowRight':
-      x += 30;
+      x += 1;
       break;
   }
 

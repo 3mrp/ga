@@ -1,5 +1,5 @@
 // Initialize Ably with your API key
-const ably = new Ably.Realtime('your-ably-api-key');
+const ably = new Ably.Realtime('Aj5RCA.lkSclA:JY7AdllhPQkqoWqgyuxqUA3KeUBA_4ZkQhC8jJnuPYY');
 
 // Create or join a channel
 const channel = ably.channels.get('cube-movement');

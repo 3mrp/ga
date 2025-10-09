@@ -11,6 +11,10 @@ let otherSnakes = {};
 let food = { x: Math.floor(Math.random() * 590), y: Math.floor(Math.random() * 590) };
 let score = 0;
 let lastPosition = { x: 100, y: 100 };
+let lastMovePublishTime = 0;
+let lastStateResponseTime = 0;
+const MOVE_PUBLISH_INTERVAL = 100; // Publish moves at most every 100ms (10 times per second)
+const STATE_RESPONSE_COOLDOWN = 1000; // Respond to state requests at most once per second
 
 const snakeElements = [];
 const foodElement = document.createElement('div');
@@ -72,8 +76,13 @@ function moveSnake() {
     resetSnake();
   }
 
+  // Throttle MOVE messages to prevent rate limiting
+  const now = Date.now();
   if (newHead.x !== lastPosition.x || newHead.y !== lastPosition.y) {
-    channel.publish('MOVE', { id: clientId, snake, score });
+    if (now - lastMovePublishTime >= MOVE_PUBLISH_INTERVAL) {
+      channel.publish('MOVE', { id: clientId, snake, score });
+      lastMovePublishTime = now;
+    }
     lastPosition = { x: newHead.x, y: newHead.y };
   }
 }
@@ -147,12 +156,17 @@ channel.subscribe('MOVE', (message) => {
 });
 
 channel.subscribe('STATE_REQUEST', (message) => {
-  channel.publish('STATE_RESPONSE', {
-    id: clientId,
-    snake,
-    score,
-    food
-  });
+  // Add cooldown to prevent responding to multiple STATE_REQUESTs too quickly
+  const now = Date.now();
+  if (now - lastStateResponseTime >= STATE_RESPONSE_COOLDOWN) {
+    channel.publish('STATE_RESPONSE', {
+      id: clientId,
+      snake,
+      score,
+      food
+    });
+    lastStateResponseTime = now;
+  }
 });
 
 channel.subscribe('STATE_RESPONSE', (message) => {

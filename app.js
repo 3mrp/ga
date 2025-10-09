@@ -141,7 +141,7 @@ function updateOtherSnakes(message) {
 }
 
 function updateScoreboard() {
-  scoreboard.textContent = `Your Score: ${score}`;
+  scoreboard.textContent = `your score: ${score}`;
 }
 
 channel.subscribe('FOOD', (message) => {

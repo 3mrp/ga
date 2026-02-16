@@ -1,0 +1,304 @@
+sub init()
+    m.top.setFocus(true)
+    
+    ' Get UI elements
+    m.urlLabel = m.top.findNode("urlLabel")
+    m.contentLabel = m.top.findNode("contentLabel")
+    m.statusLabel = m.top.findNode("statusLabel")
+    m.helpText = m.top.findNode("helpText")
+    m.backButton = m.top.findNode("backButton")
+    m.forwardButton = m.top.findNode("forwardButton")
+    m.refreshButton = m.top.findNode("refreshButton")
+    
+    ' Initialize browser state
+    m.currentUrl = ""
+    m.history = []
+    m.historyIndex = -1
+    m.scrollPosition = 0
+    m.contentLines = []
+    
+    ' Set up keyboard observer
+    m.keyboard = CreateObject("roSGNode", "Keyboard")
+    
+    ' Set key event handler
+    m.top.observeField("focusedChild", "onFocusChange")
+end sub
+
+function onKeyEvent(key as String, press as Boolean) as Boolean
+    if press
+        if key = "OK"
+            ' Show keyboard for URL input
+            showKeyboard()
+            return true
+        else if key = "left"
+            ' Go back
+            navigateBack()
+            return true
+        else if key = "right"
+            ' Go forward
+            navigateForward()
+            return true
+        else if key = "replay"
+            ' Refresh current page
+            if m.currentUrl <> ""
+                loadUrl(m.currentUrl)
+            end if
+            return true
+        else if key = "up"
+            ' Scroll up
+            scrollContent(-50)
+            return true
+        else if key = "down"
+            ' Scroll down
+            scrollContent(50)
+            return true
+        end if
+    end if
+    return false
+end function
+
+sub showKeyboard()
+    ' Create and show keyboard dialog
+    m.keyboardDialog = CreateObject("roSGNode", "KeyboardDialog")
+    m.keyboardDialog.title = "Enter URL or Search Term"
+    m.keyboardDialog.text = m.currentUrl
+    m.keyboardDialog.buttons = ["OK", "Cancel"]
+    m.keyboardDialog.observeField("buttonSelected", "onKeyboardButton")
+    m.top.dialog = m.keyboardDialog
+end sub
+
+sub onKeyboardButton(event as Object)
+    buttonIndex = m.keyboardDialog.buttonSelected
+    if buttonIndex = 0
+        ' OK pressed
+        inputText = m.keyboardDialog.text
+        if inputText <> ""
+            processInput(inputText)
+        end if
+    end if
+    m.top.dialog = invalid
+end sub
+
+sub processInput(inputText as String)
+    ' Process user input - could be URL or search term
+    url = inputText
+    
+    ' If it doesn't start with http, add https://
+    if not url.Left(7) = "http://" and not url.Left(8) = "https://"
+        ' Check if it looks like a domain
+        if url.Instr(".") > 0 and url.Instr(" ") < 0
+            url = "https://" + url
+        else
+            ' Treat as search query - use DuckDuckGo
+            url = "https://duckduckgo.com/?q=" + url.EncodeUri()
+        end if
+    end if
+    
+    loadUrl(url)
+end sub
+
+sub loadUrl(url as String)
+    m.statusLabel.text = "Loading: " + url
+    m.helpText.visible = false
+    
+    ' Add to history
+    if m.historyIndex < m.history.Count() - 1
+        ' Remove forward history if we're not at the end
+        m.history.Delete(m.historyIndex + 1)
+    end if
+    m.history.Push(url)
+    m.historyIndex = m.history.Count() - 1
+    
+    m.currentUrl = url
+    m.urlLabel.text = url
+    
+    ' Fetch content
+    transfer = CreateObject("roUrlTransfer")
+    transfer.SetUrl(url)
+    transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
+    transfer.InitClientCertificates()
+    transfer.EnableHostVerification(false)
+    transfer.EnablePeerVerification(false)
+    
+    ' Set user agent
+    transfer.AddHeader("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) Roku/Browser 1.0")
+    
+    ' Try to fetch the content
+    port = CreateObject("roMessagePort")
+    transfer.SetPort(port)
+    
+    if transfer.AsyncGetToString()
+        while true
+            msg = wait(5000, port)
+            if msg <> invalid
+                if type(msg) = "roUrlEvent"
+                    if msg.GetResponseCode() = 200
+                        content = msg.GetString()
+                        displayContent(content, url)
+                        m.statusLabel.text = "Loaded: " + url
+                    else
+                        m.statusLabel.text = "Error loading page: HTTP " + msg.GetResponseCode().ToStr()
+                        m.contentLabel.text = "Failed to load page. Response code: " + msg.GetResponseCode().ToStr()
+                    end if
+                    exit while
+                end if
+            else
+                m.statusLabel.text = "Error: Request timeout"
+                m.contentLabel.text = "Request timed out. Please try again."
+                exit while
+            end if
+        end while
+    else
+        m.statusLabel.text = "Error: Failed to initiate request"
+        m.contentLabel.text = "Failed to start request. Please check the URL."
+    end if
+end sub
+
+sub displayContent(content as String, url as String)
+    ' Simple text extraction from HTML
+    ' Remove script tags
+    cleanContent = content
+    
+    ' Remove scripts
+    while true
+        scriptStart = cleanContent.Instr("<script")
+        if scriptStart < 0 then exit while
+        scriptEnd = cleanContent.Instr("</script>")
+        if scriptEnd < 0 then exit while
+        cleanContent = cleanContent.Left(scriptStart) + cleanContent.Mid(scriptEnd + 9)
+    end while
+    
+    ' Remove style tags
+    while true
+        styleStart = cleanContent.Instr("<style")
+        if styleStart < 0 then exit while
+        styleEnd = cleanContent.Instr("</style>")
+        if styleEnd < 0 then exit while
+        cleanContent = cleanContent.Left(styleStart) + cleanContent.Mid(styleEnd + 8)
+    end while
+    
+    ' Replace common HTML entities
+    cleanContent = cleanContent.Replace("&nbsp;", " ")
+    cleanContent = cleanContent.Replace("&amp;", "&")
+    cleanContent = cleanContent.Replace("&lt;", "<")
+    cleanContent = cleanContent.Replace("&gt;", ">")
+    cleanContent = cleanContent.Replace("&quot;", Chr(34))
+    cleanContent = cleanContent.Replace("&#39;", "'")
+    
+    ' Remove HTML tags
+    cleanContent = stripHtmlTags(cleanContent)
+    
+    ' Remove extra whitespace
+    while cleanContent.Instr("  ") >= 0
+        cleanContent = cleanContent.Replace("  ", " ")
+    end while
+    
+    ' Remove leading/trailing whitespace from each line
+    lines = cleanContent.Split(Chr(10))
+    processedLines = []
+    for each line in lines
+        trimmed = line.Trim()
+        if trimmed <> ""
+            processedLines.Push(trimmed)
+        end if
+    end for
+    
+    ' Limit to first 1000 lines to prevent memory issues
+    if processedLines.Count() > 1000
+        processedLines = processedLines.Slice(0, 1000)
+        processedLines.Push("")
+        processedLines.Push("[Content truncated - showing first 1000 lines]")
+    end if
+    
+    m.contentLines = processedLines
+    m.scrollPosition = 0
+    updateContentDisplay()
+end sub
+
+function stripHtmlTags(html as String) as String
+    result = ""
+    inTag = false
+    
+    for i = 0 to html.Len() - 1
+        char = html.Mid(i, 1)
+        if char = "<"
+            inTag = true
+        else if char = ">"
+            inTag = false
+            ' Add space after closing tag
+            result = result + " "
+        else if not inTag
+            result = result + char
+        end if
+    end for
+    
+    return result
+end function
+
+sub updateContentDisplay()
+    ' Display a window of content based on scroll position
+    visibleLines = 40 ' Approximate number of visible lines
+    startLine = m.scrollPosition
+    if startLine < 0 then startLine = 0
+    if startLine >= m.contentLines.Count() then startLine = m.contentLines.Count() - 1
+    
+    endLine = startLine + visibleLines
+    if endLine > m.contentLines.Count() then endLine = m.contentLines.Count()
+    
+    displayText = ""
+    for i = startLine to endLine - 1
+        if i < m.contentLines.Count()
+            displayText = displayText + m.contentLines[i] + Chr(10)
+        end if
+    end for
+    
+    m.contentLabel.text = displayText
+    
+    ' Update status with scroll info
+    if m.contentLines.Count() > visibleLines
+        scrollPercent = (startLine * 100) / (m.contentLines.Count() - visibleLines)
+        if scrollPercent > 100 then scrollPercent = 100
+        m.statusLabel.text = m.currentUrl + " | Scroll: " + scrollPercent.ToStr() + "%"
+    else
+        m.statusLabel.text = m.currentUrl
+    end if
+end sub
+
+sub scrollContent(delta as Integer)
+    if m.contentLines.Count() > 0
+        m.scrollPosition = m.scrollPosition + (delta / 20) ' Adjust scroll speed
+        if m.scrollPosition < 0 then m.scrollPosition = 0
+        maxScroll = m.contentLines.Count() - 40
+        if maxScroll < 0 then maxScroll = 0
+        if m.scrollPosition > maxScroll then m.scrollPosition = maxScroll
+        updateContentDisplay()
+    end if
+end sub
+
+sub navigateBack()
+    if m.historyIndex > 0
+        m.historyIndex = m.historyIndex - 1
+        url = m.history[m.historyIndex]
+        m.currentUrl = url
+        m.urlLabel.text = url
+        loadUrl(url)
+    else
+        m.statusLabel.text = "Already at the beginning of history"
+    end if
+end sub
+
+sub navigateForward()
+    if m.historyIndex < m.history.Count() - 1
+        m.historyIndex = m.historyIndex + 1
+        url = m.history[m.historyIndex]
+        m.currentUrl = url
+        m.urlLabel.text = url
+        loadUrl(url)
+    else
+        m.statusLabel.text = "Already at the end of history"
+    end if
+end sub
+
+sub onFocusChange()
+    ' Handle focus changes if needed
+end sub

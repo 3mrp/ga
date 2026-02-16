@@ -104,6 +104,10 @@ When you press OK, a keyboard will appear. You can:
 - Complex websites with heavy JavaScript will only show text content
 - Images and styling are not displayed
 
+### Security Note
+
+SSL certificate verification is disabled in this app to maximize compatibility with various websites. This means HTTPS connections are less secure than in a standard browser. Only visit websites you trust and avoid entering sensitive information.
+
 ## Troubleshooting
 
 ### App Won't Install

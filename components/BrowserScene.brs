@@ -90,7 +90,7 @@ sub processInput(inputText as String)
             url = "https://" + url
         else
             ' Treat as search query - use DuckDuckGo
-            url = "https://duckduckgo.com/?q=" + url.EncodeUri()
+            url = "https://duckduckgo.com/?q=" + url.EncodeUriComponent()
         end if
     end if
     
@@ -104,7 +104,12 @@ sub loadUrl(url as String)
     ' Add to history
     if m.historyIndex < m.history.Count() - 1
         ' Remove forward history if we're not at the end
-        m.history.Delete(m.historyIndex + 1)
+        ' Create new array with only history up to current index
+        newHistory = []
+        for i = 0 to m.historyIndex
+            newHistory.Push(m.history[i])
+        end for
+        m.history = newHistory
     end if
     m.history.Push(url)
     m.historyIndex = m.history.Count() - 1
@@ -112,11 +117,22 @@ sub loadUrl(url as String)
     m.currentUrl = url
     m.urlLabel.text = url
     
+    ' Fetch the content
+    fetchContent(url)
+end sub
+
+sub fetchContent(url as String)
+    ' Fetch content without modifying history
+    m.statusLabel.text = "Loading: " + url
+    
     ' Fetch content
     transfer = CreateObject("roUrlTransfer")
     transfer.SetUrl(url)
     transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.InitClientCertificates()
+    ' Note: SSL verification is disabled to maximize compatibility with various websites
+    ' Many sites have certificate chains that Roku's certificate bundle doesn't recognize
+    ' Users should be aware this makes connections less secure
     transfer.EnableHostVerification(false)
     transfer.EnablePeerVerification(false)
     
@@ -281,7 +297,7 @@ sub navigateBack()
         url = m.history[m.historyIndex]
         m.currentUrl = url
         m.urlLabel.text = url
-        loadUrl(url)
+        fetchContent(url)
     else
         m.statusLabel.text = "Already at the beginning of history"
     end if
@@ -293,7 +309,7 @@ sub navigateForward()
         url = m.history[m.historyIndex]
         m.currentUrl = url
         m.urlLabel.text = url
-        loadUrl(url)
+        fetchContent(url)
     else
         m.statusLabel.text = "Already at the end of history"
     end if

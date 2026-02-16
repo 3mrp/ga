@@ -1,5 +1,6 @@
 # Roku development
 *.zip
+!RokuBrowser.zip
 .roku
 *.pkg
 

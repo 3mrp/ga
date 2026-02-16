@@ -41,7 +41,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         else if key = "replay"
             ' Refresh current page
             if m.currentUrl <> ""
-                loadUrl(m.currentUrl)
+                fetchContent(m.currentUrl)
             end if
             return true
         else if key = "up"
@@ -90,7 +90,9 @@ sub processInput(inputText as String)
             url = "https://" + url
         else
             ' Treat as search query - use DuckDuckGo
-            url = "https://duckduckgo.com/?q=" + url.EncodeUriComponent()
+            ' Encode the search term properly
+            encodedQuery = inputText.EncodeUriComponent()
+            url = "https://duckduckgo.com/?q=" + encodedQuery
         end if
     end if
     

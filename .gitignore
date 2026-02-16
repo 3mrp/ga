@@ -1,0 +1,14 @@
+# Roku development
+*.zip
+.roku
+*.pkg
+
+# Build artifacts
+out/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*~

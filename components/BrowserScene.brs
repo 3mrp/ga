@@ -242,7 +242,7 @@ end function
 function removeTagContent(content as String, startTag as String, endTag as String) as String
     result = content
     iterations = 0
-    maxIterations = 100 ' Safety limit
+    maxIterations = 500 ' Increased safety limit for pages with many blocks
     
     while iterations < maxIterations
         tagStart = result.Instr(startTag)
@@ -310,10 +310,14 @@ function applyHTMLFormatting(html as String) as String
     ' Format blocks
     result = replaceTagWithFormat(result, "<p", "</p>", "", Chr(10) + Chr(10))
     result = replaceTagWithFormat(result, "<div", "</div>", "", Chr(10))
-    result = replaceTagWithFormat(result, "<br", ">", Chr(10), "")
+    ' Handle self-closing br tags specially
     result = result.Replace("<br/>", Chr(10))
     result = result.Replace("<br />", Chr(10))
-    result = replaceTagWithFormat(result, "<hr", ">", Chr(10) + "─────────────────────" + Chr(10), "")
+    result = result.Replace("<br>", Chr(10))
+    ' Handle self-closing hr tags specially
+    result = result.Replace("<hr/>", Chr(10) + "─────────────────────" + Chr(10))
+    result = result.Replace("<hr />", Chr(10) + "─────────────────────" + Chr(10))
+    result = result.Replace("<hr>", Chr(10) + "─────────────────────" + Chr(10))
     result = replaceTagWithFormat(result, "<blockquote", "</blockquote>", Chr(10) + "│ ", Chr(10))
     
     ' Format tables (basic support)
@@ -329,7 +333,7 @@ end function
 function replaceTagWithFormat(html as String, startTag as String, endTag as String, prefix as String, suffix as String) as String
     result = html
     iterations = 0
-    maxIterations = 200 ' Safety limit
+    maxIterations = 500 ' Increased limit for content-rich pages
     
     while iterations < maxIterations
         tagStart = result.Instr(startTag)
@@ -342,23 +346,20 @@ function replaceTagWithFormat(html as String, startTag as String, endTag as Stri
         ' Find the closing tag
         tagCloseStart = result.Instr(tagOpenEnd, endTag)
         if tagCloseStart < 0
-            ' No closing tag, just remove opening tag
+            ' No closing tag found, remove opening tag and continue searching
             result = result.Left(tagStart) + result.Mid(tagOpenEnd + 1)
             iterations = iterations + 1
-            goto continueReplace
+        else
+            ' Extract content between tags
+            content = result.Mid(tagOpenEnd + 1, tagCloseStart - tagOpenEnd - 1)
+            
+            ' Build replacement
+            replacement = prefix + content + suffix
+            
+            ' Replace in original string
+            result = result.Left(tagStart) + replacement + result.Mid(tagCloseStart + endTag.Len())
+            iterations = iterations + 1
         end if
-        
-        ' Extract content between tags
-        content = result.Mid(tagOpenEnd + 1, tagCloseStart - tagOpenEnd - 1)
-        
-        ' Build replacement
-        replacement = prefix + content + suffix
-        
-        ' Replace in original string
-        result = result.Left(tagStart) + replacement + result.Mid(tagCloseStart + endTag.Len())
-        
-        iterations = iterations + 1
-        continueReplace:
     end while
     
     return result

@@ -100,10 +100,17 @@
 
 ## What You'll See
 
-- Website text content without formatting
-- Article text, paragraphs, links as text
-- No images, CSS, or JavaScript elements
-- Clean, readable text layout
+- Website text content with **basic HTML formatting**
+- **Headings** displayed with decorative lines (━━━, ═══, ───)
+- **Bold text** shown with 【brackets】
+- **Italic text** shown with ⟪angle brackets⟫
+- **Links** indicated with [🔗 symbol]
+- **Lists** formatted with bullet points (•)
+- Article text, paragraphs, links with visual styling
+- **Code blocks** with ``` markers
+- **Quotes** with │ vertical bars
+- No images, but structured text layout
+- Clean, readable text with formatting
 - Scroll indicators
 - Loading messages
 
@@ -136,6 +143,7 @@ The app will show:
 - "Request timeout" for slow sites
 - "HTTP error" for blocked requests
 - "[Content truncated]" for very long pages
-- Plain text only, no images or styling
+- **Formatted text with HTML structure** (headings, lists, bold, italic, etc.)
+- No images or advanced CSS styling
 
-This provides a functional, if basic, web browsing experience on your Roku device!
+This provides a functional web browsing experience with **basic HTML formatting** on your Roku device!

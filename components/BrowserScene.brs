@@ -173,45 +173,30 @@ sub fetchContent(url as String)
 end sub
 
 sub displayContent(content as String, url as String)
-    ' Simple text extraction from HTML
-    ' Remove script tags
+    ' Enhanced HTML rendering with basic formatting support
     cleanContent = content
     
     ' Remove scripts
-    while true
-        scriptStart = cleanContent.Instr("<script")
-        if scriptStart < 0 then exit while
-        scriptEnd = cleanContent.Instr("</script>")
-        if scriptEnd < 0 then exit while
-        cleanContent = cleanContent.Left(scriptStart) + cleanContent.Mid(scriptEnd + 9)
-    end while
+    cleanContent = removeTagContent(cleanContent, "<script", "</script>")
     
-    ' Remove style tags
-    while true
-        styleStart = cleanContent.Instr("<style")
-        if styleStart < 0 then exit while
-        styleEnd = cleanContent.Instr("</style>")
-        if styleEnd < 0 then exit while
-        cleanContent = cleanContent.Left(styleStart) + cleanContent.Mid(styleEnd + 8)
-    end while
+    ' Extract and parse basic CSS for color/styling hints
+    cleanContent = removeTagContent(cleanContent, "<style", "</style>")
     
     ' Replace common HTML entities
-    cleanContent = cleanContent.Replace("&nbsp;", " ")
-    cleanContent = cleanContent.Replace("&amp;", "&")
-    cleanContent = cleanContent.Replace("&lt;", "<")
-    cleanContent = cleanContent.Replace("&gt;", ">")
-    cleanContent = cleanContent.Replace("&quot;", Chr(34))
-    cleanContent = cleanContent.Replace("&#39;", "'")
+    cleanContent = replaceHTMLEntities(cleanContent)
     
-    ' Remove HTML tags
+    ' Apply basic HTML formatting before removing tags
+    cleanContent = applyHTMLFormatting(cleanContent)
+    
+    ' Remove remaining HTML tags
     cleanContent = stripHtmlTags(cleanContent)
     
-    ' Remove extra whitespace
+    ' Clean up extra whitespace
     while cleanContent.Instr("  ") >= 0
         cleanContent = cleanContent.Replace("  ", " ")
     end while
     
-    ' Remove leading/trailing whitespace from each line
+    ' Split into lines and clean
     lines = cleanContent.Split(Chr(10))
     processedLines = []
     for each line in lines
@@ -249,6 +234,133 @@ function stripHtmlTags(html as String) as String
             result = result + char
         end if
     end for
+    
+    return result
+end function
+
+' Helper function to remove content between tags (with safety limit)
+function removeTagContent(content as String, startTag as String, endTag as String) as String
+    result = content
+    iterations = 0
+    maxIterations = 500 ' Increased safety limit for pages with many blocks
+    
+    while iterations < maxIterations
+        tagStart = result.Instr(startTag)
+        if tagStart < 0 then exit while
+        
+        tagEnd = result.Instr(tagStart, endTag)
+        if tagEnd < 0 then exit while
+        
+        ' Remove the tag and its content
+        result = result.Left(tagStart) + result.Mid(tagEnd + endTag.Len())
+        iterations = iterations + 1
+    end while
+    
+    return result
+end function
+
+' Replace common HTML entities
+function replaceHTMLEntities(content as String) as String
+    result = content
+    result = result.Replace("&nbsp;", " ")
+    result = result.Replace("&amp;", "&")
+    result = result.Replace("&lt;", "<")
+    result = result.Replace("&gt;", ">")
+    result = result.Replace("&quot;", Chr(34))
+    result = result.Replace("&#39;", "'")
+    result = result.Replace("&mdash;", "—")
+    result = result.Replace("&ndash;", "–")
+    result = result.Replace("&hellip;", "...")
+    result = result.Replace("&copy;", "©")
+    result = result.Replace("&reg;", "®")
+    result = result.Replace("&trade;", "™")
+    result = result.Replace("&bull;", "•")
+    result = result.Replace("&middot;", "·")
+    return result
+end function
+
+' Apply basic HTML formatting before stripping tags
+function applyHTMLFormatting(html as String) as String
+    result = html
+    
+    ' Add visual separators for headings
+    result = replaceTagWithFormat(result, "<h1", "</h1>", Chr(10) + "━━━ ", " ━━━" + Chr(10))
+    result = replaceTagWithFormat(result, "<h2", "</h2>", Chr(10) + "═══ ", " ═══" + Chr(10))
+    result = replaceTagWithFormat(result, "<h3", "</h3>", Chr(10) + "─── ", " ───" + Chr(10))
+    result = replaceTagWithFormat(result, "<h4", "</h4>", Chr(10) + "╌╌ ", " ╌╌" + Chr(10))
+    result = replaceTagWithFormat(result, "<h5", "</h5>", Chr(10) + "▸ ", "" + Chr(10))
+    result = replaceTagWithFormat(result, "<h6", "</h6>", Chr(10) + "▹ ", "" + Chr(10))
+    
+    ' Format text styling
+    result = replaceTagWithFormat(result, "<strong", "</strong>", "【", "】")
+    result = replaceTagWithFormat(result, "<b", "</b>", "【", "】")
+    result = replaceTagWithFormat(result, "<em", "</em>", "⟪", "⟫")
+    result = replaceTagWithFormat(result, "<i", "</i>", "⟪", "⟫")
+    result = replaceTagWithFormat(result, "<code", "</code>", "`", "`")
+    result = replaceTagWithFormat(result, "<pre", "</pre>", Chr(10) + "```" + Chr(10), Chr(10) + "```" + Chr(10))
+    
+    ' Format links
+    result = replaceTagWithFormat(result, "<a", "</a>", "[🔗 ", "]")
+    
+    ' Format lists
+    result = replaceTagWithFormat(result, "<li", "</li>", Chr(10) + "  • ", "")
+    result = replaceTagWithFormat(result, "<ul", "</ul>", Chr(10), Chr(10))
+    result = replaceTagWithFormat(result, "<ol", "</ol>", Chr(10), Chr(10))
+    
+    ' Format blocks
+    result = replaceTagWithFormat(result, "<p", "</p>", "", Chr(10) + Chr(10))
+    result = replaceTagWithFormat(result, "<div", "</div>", "", Chr(10))
+    ' Handle self-closing br tags specially
+    result = result.Replace("<br/>", Chr(10))
+    result = result.Replace("<br />", Chr(10))
+    result = result.Replace("<br>", Chr(10))
+    ' Handle self-closing hr tags specially
+    result = result.Replace("<hr/>", Chr(10) + "─────────────────────" + Chr(10))
+    result = result.Replace("<hr />", Chr(10) + "─────────────────────" + Chr(10))
+    result = result.Replace("<hr>", Chr(10) + "─────────────────────" + Chr(10))
+    result = replaceTagWithFormat(result, "<blockquote", "</blockquote>", Chr(10) + "│ ", Chr(10))
+    
+    ' Format tables (basic support)
+    result = replaceTagWithFormat(result, "<th", "</th>", " ║ ", " ║ ")
+    result = replaceTagWithFormat(result, "<td", "</td>", " │ ", " │ ")
+    result = replaceTagWithFormat(result, "<tr", "</tr>", "", Chr(10))
+    result = replaceTagWithFormat(result, "<table", "</table>", Chr(10) + "┌─────────┐" + Chr(10), Chr(10) + "└─────────┘" + Chr(10))
+    
+    return result
+end function
+
+' Replace a tag pair with prefix/suffix formatting
+function replaceTagWithFormat(html as String, startTag as String, endTag as String, prefix as String, suffix as String) as String
+    result = html
+    iterations = 0
+    maxIterations = 500 ' Increased limit for content-rich pages
+    
+    while iterations < maxIterations
+        tagStart = result.Instr(startTag)
+        if tagStart < 0 then exit while
+        
+        ' Find the end of the opening tag
+        tagOpenEnd = result.Instr(tagStart, ">")
+        if tagOpenEnd < 0 then exit while
+        
+        ' Find the closing tag
+        tagCloseStart = result.Instr(tagOpenEnd, endTag)
+        if tagCloseStart < 0
+            ' No closing tag found, remove opening tag and continue searching
+            result = result.Left(tagStart) + result.Mid(tagOpenEnd + 1)
+            iterations = iterations + 1
+        else
+            ' Extract content between tags
+            content = result.Mid(tagOpenEnd + 1, tagCloseStart - tagOpenEnd - 1)
+            
+            ' Build replacement
+            replacement = prefix + content + suffix
+            
+            ' Replace in original string
+            result = result.Left(tagStart) + replacement + result.Mid(tagCloseStart + endTag.Len())
+            iterations = iterations + 1
+        end if
+    end while
     
     return result
 end function

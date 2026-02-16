@@ -10,10 +10,25 @@ A web browser application for Roku devices that can be sideloaded for personal u
 - Refresh current page
 - Scroll through content with arrow keys
 - Search integration with DuckDuckGo
+- **Basic HTML formatting support** - headings, bold, italic, lists, links, quotes, and more
 
 ## Important Note
 
-Due to Roku platform limitations, this browser can fetch and display text content from websites. Full HTML rendering with CSS, JavaScript, and images is not available on Roku devices. The app extracts and displays text content from web pages.
+Due to Roku platform limitations, this browser can fetch and display text content from websites. The app now includes **basic HTML formatting support** that renders common HTML elements with visual styling using text decorators:
+
+### Supported HTML Elements:
+- **Headings (H1-H6)**: Displayed with decorative lines (━━━, ═══, ───, etc.)
+- **Bold text** (`<strong>`, `<b>`): Displayed with 【brackets】
+- **Italic text** (`<em>`, `<i>`): Displayed with ⟪angle brackets⟫
+- **Links** (`<a>`): Displayed with [🔗 link indicator]
+- **Lists** (`<ul>`, `<ol>`, `<li>`): Displayed with bullet points (•)
+- **Code** (`<code>`, `<pre>`): Displayed with `backticks` and code blocks
+- **Quotes** (`<blockquote>`): Displayed with │ vertical bars
+- **Horizontal rules** (`<hr>`): Displayed as ─────────────────────
+- **Paragraphs** (`<p>`, `<div>`): Proper spacing and line breaks
+- **Special characters**: Common HTML entities (©, ®, ™, •, etc.)
+
+Full CSS rendering, JavaScript execution, and image display are still not available on Roku devices.
 
 ## Installation Instructions
 
@@ -100,9 +115,11 @@ When you press OK, a keyboard will appear. You can:
 ### Tips
 
 - The browser works best with text-based websites
+- **HTML formatting is now supported** - headings, lists, bold, italic, and more are visually styled
 - Some websites may block requests from the Roku browser
-- Complex websites with heavy JavaScript will only show text content
-- Images and styling are not displayed
+- Complex websites with heavy JavaScript will show text content with basic formatting
+- Images and advanced CSS styling are not displayed
+- CSS in `<style>` tags is removed, but HTML structure is preserved and formatted
 
 ### Security Note
 
@@ -151,17 +168,21 @@ SSL certificate verification is disabled in this app to maximize compatibility w
 
 - Built with BrightScript and SceneGraph
 - Uses roUrlTransfer for HTTP requests
-- Text extraction from HTML content
+- **Enhanced HTML parsing with basic formatting**
+- Supports common HTML elements (headings, lists, bold, italic, links, etc.)
+- Text-based visual styling using Unicode decorators
+- HTML entity decoding (©, ®, ™, etc.)
 - Simple navigation and history management
 - Keyboard input for URL entry
 
 ## Limitations
 
 - No JavaScript execution
-- No CSS rendering
+- **Basic HTML formatting supported** (headings, lists, bold, italic, links, etc.)
+- CSS is parsed but full styling not applied (HTML structure is formatted with text decorators)
 - No image display
-- Text content only
-- Limited HTML parsing
+- Text content with formatting
+- Limited HTML parsing (complex nested structures may not render perfectly)
 - Some websites may not work properly
 
 ## Development
